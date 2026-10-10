@@ -78,18 +78,26 @@ Every page uses these JSON endpoints. Auth works with either the httpOnly cookie
 **1. Database structure and why**
 
 ```
-Event(id, title, category, city, startsAt, price, description, imageUrl, isActive, createdAt, updatedAt)
-User(id, email UNIQUE, passwordHash, createdAt)
-FavouriteCategory(userId, category)        PK(userId, category)
-Reminder(userId, eventId, createdAt)       PK(userId, eventId)
-CardDesign(userId, eventId, theme, stickers JSON, updatedAt)  PK(userId, eventId)
+Event(id, title, category, city, startsAt, price, description, imageUrl, isActive)
+User(id, email UNIQUE, passwordHash)
+FavouriteCategory(userId, category)              PK(userId, category)
+Reminder(userId, eventId)                        PK(userId, eventId)
+CardDesign(userId, eventId, theme, stickers)     PK(userId, eventId)
 ```
-Each user-to-event relationship is its own small table with a composite primary key. That makes "one reminder / one card per user per event" a database rule, and toggling becomes a simple idempotent upsert or delete. `isActive` is a flag so events are never deleted. Price is stored as whole rupees in an `Int` (no float rounding), and `startsAt` is UTC, formatted to IST only for display.
+Each user-to-event link is a small table with a composite primary key, so "one reminder / one card per user per event" is enforced by the database and saving is a simple upsert.
+Events are never deleted, only flagged with `isActive`.
+Price is whole rupees in an `Int` (no float errors), and `startsAt` is stored in UTC and shown in IST.
 
 **2. How the filter query works and which index**
 
-`GET /api/events` always starts with `isActive = true AND startsAt >= now()`, then adds `category = ?`, `city = ?` and `(title LIKE %q% OR description LIKE %q%)` only when each one is given. All parts are ANDed, sorted by `startsAt ASC`, and paginated with `count` + `skip/take` in one transaction. Indexes: `(isActive, startsAt)` covers the default list and its sort, and `(isActive, category, city, startsAt)` covers filtered lists without a separate sort. `LIKE '%q%'` can't use a B-tree index, so at scale I'd use Postgres full-text search (a `tsvector` column with a GIN index) or a trigram index.
+Every query starts with `isActive = true AND startsAt >= now`, then adds `category = ?`, `city = ?` and `title/description LIKE %q%` only when given, all joined with AND.
+Results are sorted by `startsAt` and paginated with `skip/take`, with a `count` for the total pages.
+I added the indexes `(isActive, startsAt)` and `(isActive, category, city, startsAt)`, so both filtered and unfiltered lists come back already sorted.
+`LIKE '%q%'` can't use a normal index, so with more data I'd add full-text search (Postgres `tsvector` + GIN).
 
 **3. Passwords and admin protection**
 
-Passwords are hashed with bcrypt (cost 12, salted) and never stored or returned in plain text. Login gives the same error for a wrong email and a wrong password. After login the server signs a JWT (HS256, 7-day expiry) with a `role` claim. It is returned in the JSON and also set as an `httpOnly`, `SameSite=Lax` cookie, so page JavaScript can't read it. Admin protection has three server-side layers: the middleware verifies the admin JWT for `/admin/*` and `/api/admin/*`, the admin layout re-checks it before rendering, and every admin API handler calls `requireAdmin()` itself. A user token is rejected because its role is not `admin`.
+Passwords are hashed with bcrypt (salted, cost 12), never stored in plain text, and a wrong email or password gives the same error.
+Login returns a signed JWT with a `role`, which is also set as an `httpOnly` cookie so page scripts can't read it.
+Admin is checked on the server three times: in middleware for `/admin` and `/api/admin`, in the admin layout, and inside every admin API.
+A normal user's token is rejected because its role is not `admin`.
