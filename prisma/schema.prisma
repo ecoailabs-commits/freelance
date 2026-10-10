@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// category is one of: Music, Workshop, Food, Sports, Kids (validated in the API with zod)
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  city        String
+  startsAt    DateTime
+  price       Int // whole rupees, 0 = free
+  description String
+  imageUrl    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reminders   Reminder[]
+  cardDesigns CardDesign[]
+
+  // public listing: WHERE isActive AND startsAt >= now [AND category] [AND city] ORDER BY startsAt
+  @@index([isActive, startsAt])
+  @@index([isActive, category, city, startsAt])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  favourites  FavouriteCategory[]
+  reminders   Reminder[]
+  cardDesigns CardDesign[]
+}
+
+model FavouriteCategory {
+  userId   String
+  category String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, category])
+}
+
+model Reminder {
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
+// One saved card per (user, event). stickers is a JSON array of sticker ids, max 3.
+model CardDesign {
+  userId    String
+  eventId   String
+  theme     String
+  stickers  String   @default("[]")
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
