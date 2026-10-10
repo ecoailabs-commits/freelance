@@ -1,103 +1,150 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { CATEGORIES } from "@/lib/constants";
+import type { EventDTO, Paginated } from "@/lib/events";
+import { useApi } from "@/lib/useApi";
+import { EventCard } from "@/components/EventCard";
+import { Pagination } from "@/components/Pagination";
+import { CardGridSkeleton, EmptyState, ErrorState } from "@/components/States";
+
+export default function EventsPage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <Suspense fallback={<CardGridSkeleton />}>
+      <Events />
+    </Suspense>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+function Events() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+
+  // The URL is the source of truth for filters, so they survive refresh and can be shared.
+  const category = params.get("category") ?? "";
+  const city = params.get("city") ?? "";
+  const q = params.get("q") ?? "";
+  const page = Number(params.get("page")) || 1;
+
+  const [search, setSearch] = useState(q);
+
+  function update(next: Record<string, string>) {
+    const sp = new URLSearchParams(params.toString());
+    for (const [k, v] of Object.entries(next)) {
+      if (v) sp.set(k, v);
+      else sp.delete(k);
+    }
+    if (!("page" in next)) sp.delete("page"); // any filter change goes back to page 1
+    router.replace(`${pathname}${sp.size ? `?${sp}` : ""}`, { scroll: false });
+  }
+
+  // Debounce typing in the search box.
+  useEffect(() => {
+    if (search.trim() === q) return;
+    const t = setTimeout(() => update({ q: search.trim() }), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const query = new URLSearchParams();
+  if (category) query.set("category", category);
+  if (city) query.set("city", city);
+  if (q) query.set("q", q);
+  if (page > 1) query.set("page", String(page));
+
+  const events = useApi<Paginated<EventDTO>>(`/api/events?${query}`);
+  const cities = useApi<{ cities: string[] }>("/api/cities");
+  const hasFilters = Boolean(category || city || q);
+
+  function clearFilters() {
+    setSearch("");
+    router.replace(pathname, { scroll: false });
+  }
+
+  return (
+    <div>
+      <section className="mb-6">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+          What&apos;s happening near you
+        </h1>
+        <p className="mt-1 text-slate-600">Music nights, workshops, food fairs and more, nearest date first.</p>
+      </section>
+
+      <section className="card mb-6 grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+        <div>
+          <label htmlFor="q" className="label">Search</label>
+          <input
+            id="q"
+            type="search"
+            className="input"
+            placeholder='Try "night" or "pottery"'
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div>
+          <label htmlFor="category" className="label">Category</label>
+          <select id="category" className="input sm:w-40" value={category} onChange={(e) => update({ category: e.target.value })}>
+            <option value="">All categories</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="city" className="label">City</label>
+          <select id="city" className="input sm:w-40" value={city} onChange={(e) => update({ city: e.target.value })}>
+            <option value="">All cities</option>
+            {city && !cities.data?.cities.includes(city) && <option value={city}>{city}</option>}
+            {cities.data?.cities.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <button className="btn-secondary" onClick={clearFilters} disabled={!hasFilters}>
+          Clear
+        </button>
+      </section>
+
+      {events.data && !events.loading && !events.error && (
+        <p className="mb-3 text-sm text-slate-500">
+          {events.data.total} event{events.data.total === 1 ? "" : "s"} found
+        </p>
+      )}
+
+      {events.error ? (
+        <ErrorState message={events.error} onRetry={events.retry} />
+      ) : events.loading || !events.data ? (
+        <CardGridSkeleton />
+      ) : events.data.items.length === 0 ? (
+        hasFilters ? (
+          <EmptyState
+            title="No events match your filters"
+            message="Try a different category, city or search word."
+            action={{ label: "Clear filters", onClick: clearFilters }}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        ) : (
+          <EmptyState emoji="🗓️" title="No upcoming events yet" message="Check back soon, new events are added every week." />
+        )
+      ) : (
+        <>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {events.data.items.map((e) => (
+              <EventCard key={e.id} event={e} />
+            ))}
+          </div>
+          <Pagination
+            page={events.data.page}
+            totalPages={events.data.totalPages}
+            onChange={(p) => {
+              update({ page: p > 1 ? String(p) : "" });
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </>
+      )}
     </div>
   );
 }
