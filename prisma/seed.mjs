@@ -1,8 +1,14 @@
 // Seeds 15 sample events. Dates are relative to "today" so the data
 // always has upcoming + past events no matter when the app is run.
 import { PrismaClient } from "@prisma/client";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
 
-const prisma = new PrismaClient();
+// Same database choice as src/lib/db.ts: Turso when configured, else the local file.
+const prisma = process.env.TURSO_DATABASE_URL
+  ? new PrismaClient({
+      adapter: new PrismaLibSQL({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN }),
+    })
+  : new PrismaClient();
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&q=70`;
@@ -51,6 +57,11 @@ const events = [
 ];
 
 async function main() {
+  // --if-empty: used by the hosted build so redeploys don't wipe live data.
+  if (process.argv.includes("--if-empty") && (await prisma.event.count()) > 0) {
+    console.log("Events already exist, skipping seed.");
+    return;
+  }
   await prisma.cardDesign.deleteMany();
   await prisma.reminder.deleteMany();
   await prisma.event.deleteMany();

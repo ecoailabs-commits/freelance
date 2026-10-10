@@ -19,6 +19,15 @@ npm run dev                 # http://localhost:3000
 
 Run `npm run db:seed` any time to reset the events. Seed dates are relative to today, so there are always upcoming and past events.
 
+## Deploying to Netlify
+
+Netlify has no writable disk, so the hosted site uses **Turso** (free hosted SQLite) instead of the local file. Locally nothing changes.
+
+1. Create a free database at https://turso.tech, then copy its **URL** (`libsql://…`) and an **auth token**.
+2. In Netlify, go to **Site configuration → Environment variables** and add:
+   `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET` (any long random string), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `DATABASE_URL` = `file:./dev.db` (Prisma requires the variable, but it is not used when Turso is set).
+3. Deploy. `netlify.toml` runs `npm run build:netlify`, which creates the tables and seeds the 15 events on the first deploy only.
+
 ## Logins
 
 | Who | Where | Credentials |

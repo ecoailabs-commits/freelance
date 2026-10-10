@@ -9,9 +9,12 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "setup": "prisma db push && node prisma/seed.mjs",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "build:netlify": "node prisma/turso-setup.mjs && next build"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@prisma/adapter-libsql": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.12",
