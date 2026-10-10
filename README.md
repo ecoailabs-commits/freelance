@@ -73,6 +73,15 @@ Every page uses these JSON endpoints. Auth works with either the httpOnly cookie
 - Times are entered and shown in IST (Asia/Kolkata).
 - SQLite is fine for this size. For production I'd switch the Prisma provider to Postgres (one line) and use full-text search.
 
+## AI tools used
+
+I built this with **Claude Code** (Anthropic's AI coding assistant) and reviewed and tested the result myself.
+
+- **Generated with AI:** project setup, Prisma schema and seed data, all API routes, auth (JWT + bcrypt), every page and component, the card designer animations, and this README.
+- **Bugs found while testing, fixed with AI:** filters overwriting each other when changed quickly, and card-designer taps being lost before the saved design loaded.
+- **Testing:** API checks with curl and browser checks at phone and laptop sizes, run through the AI tool.
+- Commits made with the tool carry a `Co-Authored-By: Claude` line.
+
 ## Short answers
 
 **1. Database structure and why**
