@@ -7,7 +7,7 @@ import { RemindButton } from "./RemindButton";
 
 export function CategoryChip({ category }: { category: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
       {CATEGORY_EMOJI[category as Category]} {category}
     </span>
   );

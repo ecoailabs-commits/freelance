@@ -9,6 +9,8 @@ import { EventCard } from "@/components/EventCard";
 import { Pagination } from "@/components/Pagination";
 import { CardGridSkeleton, EmptyState, ErrorState } from "@/components/States";
 
+type Filters = { category: string; city: string; q: string; page: number };
+
 export default function EventsPage() {
   return (
     <Suspense fallback={<CardGridSkeleton />}>
@@ -22,45 +24,45 @@ function Events() {
   const pathname = usePathname();
   const params = useSearchParams();
 
-  // The URL is the source of truth for filters, so they survive refresh and can be shared.
-  const category = params.get("category") ?? "";
-  const city = params.get("city") ?? "";
-  const q = params.get("q") ?? "";
-  const page = Number(params.get("page")) || 1;
-
+  // Filters start from the URL (so a refresh or shared link keeps them) and are
+  // mirrored back into it. State is the source of truth so quick successive
+  // changes never overwrite each other.
+  const [filters, setFilters] = useState<Filters>(() => ({
+    category: params.get("category") ?? "",
+    city: params.get("city") ?? "",
+    q: params.get("q") ?? "",
+    page: Number(params.get("page")) || 1,
+  }));
+  const { category, city, q, page } = filters;
   const [search, setSearch] = useState(q);
 
-  function update(next: Record<string, string>) {
-    const sp = new URLSearchParams(params.toString());
-    for (const [k, v] of Object.entries(next)) {
-      if (v) sp.set(k, v);
-      else sp.delete(k);
-    }
-    if (!("page" in next)) sp.delete("page"); // any filter change goes back to page 1
-    router.replace(`${pathname}${sp.size ? `?${sp}` : ""}`, { scroll: false });
-  }
-
-  // Debounce typing in the search box.
-  useEffect(() => {
-    if (search.trim() === q) return;
-    const t = setTimeout(() => update({ q: search.trim() }), 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  // Any filter change goes back to page 1.
+  const update = (next: Partial<Filters>) => setFilters((f) => ({ ...f, page: 1, ...next }));
 
   const query = new URLSearchParams();
   if (category) query.set("category", category);
   if (city) query.set("city", city);
   if (q) query.set("q", q);
   if (page > 1) query.set("page", String(page));
+  const queryString = query.toString();
 
-  const events = useApi<Paginated<EventDTO>>(`/api/events?${query}`);
+  useEffect(() => {
+    router.replace(`${pathname}${queryString ? `?${queryString}` : ""}`, { scroll: false });
+  }, [queryString, pathname, router]);
+
+  // Debounce typing in the search box.
+  useEffect(() => {
+    const t = setTimeout(() => setFilters((f) => (f.q === search.trim() ? f : { ...f, q: search.trim(), page: 1 })), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const events = useApi<Paginated<EventDTO>>(`/api/events?${queryString}`);
   const cities = useApi<{ cities: string[] }>("/api/cities");
   const hasFilters = Boolean(category || city || q);
 
   function clearFilters() {
     setSearch("");
-    router.replace(pathname, { scroll: false });
+    setFilters({ category: "", city: "", q: "", page: 1 });
   }
 
   return (
@@ -139,7 +141,7 @@ function Events() {
             page={events.data.page}
             totalPages={events.data.totalPages}
             onChange={(p) => {
-              update({ page: p > 1 ? String(p) : "" });
+              update({ page: p });
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           />

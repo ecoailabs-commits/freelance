@@ -15,11 +15,11 @@ type Design = { theme: CardThemeId; stickers: StickerId[] };
 type PlacedSticker = { key: number; id: StickerId };
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-// Where stickers 1, 2 and 3 sit on the card.
+// Where stickers 1, 2 and 3 sit on the card (top area, clear of the text).
 const SLOTS = [
   "right-4 top-4 rotate-12",
-  "left-4 bottom-16 -rotate-12",
-  "right-10 bottom-20 rotate-6",
+  "left-4 top-4 -rotate-12",
+  "left-1/2 top-8 -translate-x-1/2 rotate-6",
 ];
 const emojiOf = (id: StickerId) => STICKERS.find((s) => s.id === id)!.emoji;
 
@@ -72,6 +72,7 @@ export function CardDesigner({ event }: { event: EventDTO }) {
   }
 
   const full = stickers.length >= MAX_STICKERS;
+  // Controls stay disabled until the saved design has loaded, so an early tap can't be overwritten.
   const themeClass = CARD_THEMES.find((t) => t.id === theme)!.className;
 
   return (
@@ -148,9 +149,10 @@ export function CardDesigner({ event }: { event: EventDTO }) {
                 <button
                   key={t.id}
                   type="button"
+                  disabled={!loaded}
                   onClick={() => change(() => setTheme(t.id))}
                   aria-pressed={theme === t.id}
-                  className="flex flex-col items-center gap-1 text-xs font-medium text-slate-600"
+                  className="flex flex-col items-center gap-1 text-xs font-medium text-slate-600 disabled:opacity-50"
                 >
                   <span
                     className={`size-12 rounded-full bg-gradient-to-br ${t.className} transition ${
@@ -172,7 +174,7 @@ export function CardDesigner({ event }: { event: EventDTO }) {
                   key={s.id}
                   type="button"
                   whileTap={{ scale: 0.85 }}
-                  disabled={full}
+                  disabled={full || !loaded}
                   onClick={() => change(() => setStickers((all) => (all.length >= MAX_STICKERS ? all : [...all, ...place([s.id])])))}
                   aria-label={`Add ${s.id} sticker`}
                   className="grid size-12 place-items-center rounded-xl border border-slate-200 bg-white text-2xl shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40"
