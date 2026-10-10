@@ -9,7 +9,7 @@ An admin posts local events (music nights, workshops, food fairs…) and visitor
 Needs **Node.js 18.18+** (tested on Node 24). No database server is needed because SQLite is a file.
 
 ```bash
-git clone <repo-url> community-events-board
+git clone https://github.com/ecoailabs-commits/freelance.git community-events-board
 cd community-events-board
 npm install                 # also runs `prisma generate`
 cp .env.example .env        # Windows (cmd): copy .env.example .env
