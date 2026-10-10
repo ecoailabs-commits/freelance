@@ -31,8 +31,6 @@ const events = [
     description: "Over 40 stalls of Kongu cuisine, street snacks and desserts. Entry ticket includes one drink." },
   { title: "Night Street Food Trail", category: "Food", city: "Delhi", startsAt: at(10, 19, 0), price: 899, imageUrl: img("photo-1504674900247-0877df9cc836"),
     description: "A guided night walk through Old Delhi's best food lanes. Eight tastings included." },
-  { title: "Chef's Table: Coastal Kitchen", category: "Food", city: "Chennai", startsAt: at(20, 20, 0), price: 2499, imageUrl: img("photo-1414235077428-338989a2e8c0"),
-    description: "A seven-course coastal tasting menu cooked live in front of 12 guests." },
   { title: "Corporate Cricket League", category: "Sports", city: "Mumbai", startsAt: at(12, 8, 0), price: 150000, imageUrl: img("photo-1574629810360-7efbbe195018"),
     description: "Two-week T10 league for company teams. Price is per team and includes kits, umpires and ground." },
   { title: "Sunday 10K Run", category: "Sports", city: "Bengaluru", startsAt: at(8, 5, 30), price: 750, imageUrl: img("photo-1461896836934-ffe607ba8211"),
@@ -41,6 +39,8 @@ const events = [
     description: "Ages 6-12. Build a city together with our facilitators. Parents can relax at the cafe." },
 
   // Inactive (hidden from visitors, visible to admin)
+  { title: "Chef's Table: Coastal Kitchen", category: "Food", city: "Chennai", startsAt: at(20, 20, 0), price: 2499, isActive: false, imageUrl: img("photo-1414235077428-338989a2e8c0"),
+    description: "A seven-course coastal tasting menu cooked live in front of 12 guests. (Sold out - kept inactive.)" },
   { title: "Kids Storytelling Hour", category: "Kids", city: "Coimbatore", startsAt: at(15, 16, 0), price: 0, isActive: false, imageUrl: img("photo-1503454537195-1dcabb73ffb9"),
     description: "Stories, puppets and songs for ages 3-8. (Postponed - kept inactive.)" },
   // Past events
